@@ -1,0 +1,29 @@
+{
+  "name": "bbook",
+  "version": "1.0.0",
+  "description": "cool book app",
+  "main": "app.js",
+  "type": "module",
+  "scripts": {
+    "start": "live-server",
+    "build": "rollup -c"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/1yabzz/book-app.git"
+  },
+  "keywords": [
+    "books"
+  ],
+  "author": "Ivan Ryzhkov",
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/1yabzz/book-app/issues"
+  },
+  "homepage": "https://github.com/1yabzz/book-app#readme",
+  "devDependencies": {
+    "@rollup/plugin-node-resolve": "^15.0.2",
+    "rollup": "^3.20.6",
+    "rollup-plugin-import-css": "^3.2.1"
+  }
+}
