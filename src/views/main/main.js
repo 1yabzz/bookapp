@@ -1,15 +1,37 @@
 import { AbsView } from "../../common/view";
+import onChange from 'on-change';
+import { Header } from "../../components/header/header";
 
 export class MainView extends AbsView{
-    constructor(){
+    state = {
+        list :[],
+        loading : false,
+        searchQuery: undefined,
+        offset: 0
+    }
+
+    constructor(appState){
         super();
+        this.appState = appState;
+        this.appState = onChange(this.appState, this.appStateHook.bind(this))
         this.setTitle('поиск книг')
+    }
+
+    appStateHook(path){
+        if(path === 'favorites'){
+            this.render();
+        }
     }
 
     render(){
         const main = document.createElement('div');
-        main.innerHTML = 'тест';
         this.app.innerHTML = '';
         this.app.append(main); 
+        this.renderHeader();
     }
-}
+
+    renderHeader(){
+        const header = new Header(this.appState).render();
+        this.app.prepend(header)
+    }
+} 
