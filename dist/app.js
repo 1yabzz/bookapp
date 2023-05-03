@@ -1031,30 +1031,139 @@
         }
 
         render(){
-            this.el.innerHTML = "";
             this.el.classList.add('header');
             this.el.innerHTML = `
             <div>
                 <img src="static/Logo.svg" alt="Логотип" />
+            </div>
+            <div class="menu">
+                <a class="menu__item" href="#">
+                    <img src="static/Search.svg" alt="Поиск книг" />
+                    Поиск книг
+                </a>
+                <a class="menu__item" href="#favorites">
+                    <img src="static/Favorites.svg" alt="Поиск книг" />
+                    Избранное
+                    <div class="menu__counter">
+                    ${this.appState.favorites.length}
+                    </div>
+                </a>
             </div>
         `;
             return this.el;
         }
     }
 
-    class MainView extends AbsView{
-        state = {
-            list :[],
-            loading : false,
-            searchQuery: undefined,
-            offset: 0
+    class Search extends Divcomp{
+        constructor(state){
+            super();
+            this.state = state;
+        }
+        search(){
+            const value = this.el.querySelector('input').value;
+            this.state.searchQuery = value;
         }
 
+        render(){
+            this.el.classList.add('search');
+            this.el.innerHTML = `
+            <div class="search__wrapper">
+                <input type="text" placeholder="Найти книгу или автора..." class="search__input" value="${this.state.searchQuery ? this.state.searchQuery : ''}"/>
+                <img src="/static/Search.svg" alt="иконка поиска" />
+            </div>
+            <button><img src="/static/sss.png"  alt="кноgка"/></button>
+        `;
+            this.el.querySelector('button').addEventListener('click', this.search.bind(this));
+            this.el.querySelector('input').addEventListener('keydown', (event) => {
+                if(event.code == 'Enter'){
+                    this.search();
+                }
+            });
+            return this.el;
+        }
+    }
+
+    class Card extends Divcomp{
+        constructor(appState, cardState){
+            super();
+            this.cardState = cardState;
+            this.appState = appState;
+        }
+
+        deleteFromFavorites(){
+            this.appState.favorites = this.appState.favorites.filter(
+                b => b.key !==  this.cardState.key
+            );
+        }
+        addToFavorites(){
+            this.appState.favorites.push(this.cardState);
+            console.log(this.cardState);
+        }
+
+        render(){
+            this.el.classList.add('card');
+            const existInFavorites = this.appState.favorites.find(b => b.key == this.cardState.key);
+            this.el.innerHTML = `
+            <div class="card__image">
+                <img src="https://covers.openlibrary.org/b/olid/${this.cardState.cover_edition_key}-M.jpg" alt="обложка" />
+            </div>
+            <div class="card__info">
+                <div class="card__name">
+                    ${this.cardState.title}
+                </div>
+                <div class="card__author">
+                    ${this.cardStatauthor_name ? this.cardState.author_name[0] : 'не задано'}
+                </div>
+                <div class="card__footer">
+                    <button class="button__add ${existInFavorites ? 'button__active' : ''}">
+                    ${existInFavorites ? '<img src="/static/sssss.svg"  />' : '<img src="/static/shape.png"  />'}
+                    </button>
+                </div>
+            </div>
+        `;
+            if(existInFavorites){
+                this.el.querySelector('button').addEventListener('click', this.deleteFromFavorites.bind(this));
+            } else {
+                this.el.querySelector('button').addEventListener('click', this.addToFavorites.bind(this));
+            }
+            return this.el
+        }
+    }
+
+    class CardList extends Divcomp{
+        constructor(appState, state){
+            super();
+            this.state = state;
+            this.appState = appState;
+        }
+
+        render(){
+            if(this.state.loading === true){
+                this.el.innerHTML = `<div class="card_list__loader">loading...</div>`;
+                return this.el;
+            }
+            
+            
+            const cardgrid = document.createElement('div');
+            cardgrid.classList.add('card_grid');
+            this.el.append(cardgrid);
+            for (const card of this.state.list){
+                cardgrid.append(new Card(this.appState, card).render());
+            }
+            return this.el;
+        }
+    }
+
+    class FavView extends AbsView{
         constructor(appState){
             super();
             this.appState = appState;
             this.appState = onChange(this.appState, this.appStateHook.bind(this));
-            this.setTitle('поиск книг');
+            this.setTitle('Мои книги');
+        }
+
+        destroy(){
+            onChange.unsubscribe(this.appState);
         }
 
         appStateHook(path){
@@ -1065,15 +1174,94 @@
 
         render(){
             const main = document.createElement('div');
+            main.innerHTML = `<h1>
+        Избранное</h1>
+        `;
+            main.append(new CardList(this.appState, { list:this.appState.favorites }).render()); 
             this.app.innerHTML = '';
             this.app.append(main); 
             this.renderHeader();
+
+            
         }
 
         renderHeader(){
             const header = new Header(this.appState).render();
             this.app.prepend(header);
         }
+
+    }
+
+    class MainView extends AbsView{
+        state = {
+            list :[],
+            numFound: 0,
+            loading : false,
+            searchQuery: undefined,
+            offset: 0
+        }
+
+        constructor(appState){
+            super();
+            this.appState = appState;
+            this.appState = onChange(this.appState, this.appStateHook.bind(this));
+            this.state = onChange(this.state, this.stateHook.bind(this));
+            this.setTitle('поиск книг');
+        }
+
+        destroy(){
+            onChange.unsubscribe(this.appState);
+            onChange.unsubscribe(this.state);
+        }
+
+        async stateHook(path){
+            if(path === 'searchQuery'){
+                this.state.loading = true;
+                const data = await this.loadList(this.state.searchQuery, this.state.offset);
+                this.state.loading = false;
+                this.state.numFound = data.numFound;
+                this.state.list = data.docs;
+            }
+            if(path === 'list'){
+                this.render();
+            }
+            if(path === 'loading'){
+                this.render();
+            }
+        }
+
+        appStateHook(path){
+            if(path === 'favorites'){
+                this.render();
+            }
+        }
+
+        async loadList(q, offset){
+            const res = await fetch(`https://openlibrary.org/search.json?q=${q}&offset=${offset}`);
+            return res.json();
+        }
+
+
+
+        render(){
+            const main = document.createElement('div');
+            main.innerHTML = `<h1>
+        Найдено книг - ${this.state.numFound}</h1>
+        `;
+            main.append(new Search(this.state).render());
+            main.append(new CardList(this.appState, this.state).render()); 
+            this.app.innerHTML = '';
+            this.app.append(main); 
+            this.renderHeader();
+
+            
+        }
+
+        renderHeader(){
+            const header = new Header(this.appState).render();
+            this.app.prepend(header);
+        }
+
     }
 
     class App{
@@ -1081,7 +1269,8 @@
             favorites: []
         }
         routes = [
-            {path: "", view: MainView}
+            {path: "", view: MainView},
+            {path: "#favorites", view: FavView}
         ]
         constructor(){
             window.addEventListener("hashchange",this.route.bind(this));

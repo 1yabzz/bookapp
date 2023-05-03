@@ -1,3 +1,4 @@
+import { FavView } from "./views/favorites/favorites";
 import { MainView } from "./views/main/main";
 
 class App{
@@ -5,7 +6,8 @@ class App{
         favorites: []
     }
     routes = [
-        {path: "", view: MainView}
+        {path: "", view: MainView},
+        {path: "#favorites", view: FavView}
     ]
     constructor(){
         window.addEventListener("hashchange",this.route.bind(this))
